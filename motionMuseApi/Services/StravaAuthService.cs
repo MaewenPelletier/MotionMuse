@@ -1,29 +1,53 @@
+using System.Net.Http.Headers;
+using System.Web;
 using motionMuseApi.Models;
 using motionMuseApi.Repositories;
 
 namespace motionMuseApi.Services
 {
-  public class StravaAuthService(IStravaLinkRepository stravaLinkRepository) : IStravaAuthService
+  public class StravaAuthService(IStravaLinkRepository stravaLinkRepository, IHttpClientFactory httpClientFactory) : IStravaAuthService
   {
-    public async Task<string?> GetValidAccessTokenAsync(string auth0UserId, CancellationToken ct = default)
+    private readonly HttpClient _client = httpClientFactory.CreateClient("auth0Client");
+
+    public async Task<string?> GetStravaValidAccessTokenAsync(string auth0UserId, CancellationToken ct = default)
     {
-      // Recherche en DB
       var entity = await stravaLinkRepository.GetByAuth0UserIdAsync(auth0UserId, ct);
 
-      if (entity?.AccessToken is not null)
-      {
-        return entity.AccessToken;
-      }
-
-      // Bootstrap on veut récupérer un Management API Token
-      return await GetAccessTokenFromM2M();
+      return entity?.AccessToken ?? null;
     }
 
-    private static async Task<string?> GetAccessTokenFromM2M()
+    public async Task<string?> GetManagementApiToken(CancellationToken ct = default)
     {
-      var httpClient = new HttpClient();
+      // Query the Oauth via M2M to get the correct token
+      var tokenResponse = await GetAccessTokenFromM2M(ct);
 
-      var URI = "https://dev-motion-muse.eu.auth0.com/oauth/token";
+      return tokenResponse?.AccessToken ?? null;
+    }
+
+    public async Task<UserResponseDto?> GetUserFromOAuth(string auth0UserId, string token, CancellationToken ct = default)
+    {
+      var encodedAuth0UserId = Uri.EscapeDataString(auth0UserId);
+      var URI = $"/api/v2/users/{encodedAuth0UserId}";
+
+      using HttpRequestMessage request = new(HttpMethod.Get, URI);
+      request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+      var httpResponseMessage = await _client.SendAsync(request, ct);
+
+      if (!httpResponseMessage.IsSuccessStatusCode)
+      {
+        throw new Exception(await httpResponseMessage.Content.ReadAsStringAsync(ct));
+      }
+
+      var response = await httpResponseMessage.Content.ReadFromJsonAsync<UserResponseDto>(ct);
+
+      return response;
+    }
+
+
+    private async Task<TokenResponseDto?> GetAccessTokenFromM2M(CancellationToken ct)
+    {
+      var URI = "oauth/token";
 
       var body = new
       {
@@ -33,27 +57,16 @@ namespace motionMuseApi.Services
         grant_type = "client_credentials"
       };
 
-      using HttpResponseMessage responseMessage = await httpClient.PostAsJsonAsync(URI, body);
+      var httpResponseMessage = await _client.PostAsJsonAsync(URI, body, ct);
 
-      if (responseMessage.IsSuccessStatusCode)
+      if (!httpResponseMessage.IsSuccessStatusCode)
       {
-        var res = await responseMessage.Content.ReadFromJsonAsync<TokenResponse>();
-
-        if (res == null)
-        {
-          throw new Exception("Null value dans le res");
-        }
-
-        Console.Write(res.AccessToken);
-
-        return res.AccessToken;
-
-      }
-      else
-      {
-        throw new Exception(responseMessage.RequestMessage.ToString());
+        throw new Exception(await httpResponseMessage.Content.ReadAsStringAsync(ct));
       }
 
+      var response = await httpResponseMessage.Content.ReadFromJsonAsync<TokenResponseDto>(ct);
+
+      return response;
     }
   }
 }
