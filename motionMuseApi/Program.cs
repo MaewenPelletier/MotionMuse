@@ -7,6 +7,11 @@ using motionMuseApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddHttpClient("auth0Client", client =>
+{
+  client.BaseAddress = new Uri("https://dev-motion-muse.eu.auth0.com/");
+});
+
 builder.Services.AddCors(options => options.AddPolicy("Everything", policy =>
 {
   policy
