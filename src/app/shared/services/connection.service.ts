@@ -59,4 +59,8 @@ export class ConnectionService {
       },
     });
   }
+
+  getUser() {
+    return this.http.get('http://localhost:5073/api/strava/getUser');
+  }
 }

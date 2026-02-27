@@ -10,9 +10,9 @@ export const environment = {
     errorPath: '/error',
   },
   httpInterceptor: {
-    allowedList: ['http://localhost:5000/api/*']
+    allowedList: ['http://localhost:5073/api/*']
   },
   api: {
-    serverUrl: 'http://localhost:5000',
+    serverUrl: 'http://localhost:5073',
   },
 };

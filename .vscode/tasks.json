@@ -37,6 +37,16 @@
           }
         }
       }
+    },
+    {
+      "label": "build",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/motionMuseApi/motionMuseApi.csproj"
+      ],
+      "problemMatcher": "$msCompile"
     }
   ]
 }

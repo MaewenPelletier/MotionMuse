@@ -2,6 +2,7 @@ import { Route } from '@angular/router';
 import { AuthGuard } from '@auth0/auth0-angular';
 import { ConnectionComponent } from './core/connection/connection.component';
 import { ErrorComponent } from './error/error.component';
+import { userResolver } from './resolvers/user-resolver.resolver';
 import { RegisterFormComponent } from './shared/components/register-form/register-form.component';
 
 export const APP_ROUTES: Route[] = [
@@ -14,6 +15,7 @@ export const APP_ROUTES: Route[] = [
     loadChildren: () =>
       import('./dashboard/routes').then(x => x.dashboardRoutes),
     canActivate: [AuthGuard],
+    resolve: [userResolver],
   },
   {
     path: 'trainings',
